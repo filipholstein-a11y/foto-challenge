@@ -137,7 +137,7 @@ const App: React.FC = () => {
   const activePhase = useMemo(() => activeChallenge ? getPhase(activeChallenge) : 'results', [activeChallenge, getPhase]);
 
   const handleUpload = (data: { title: string, author: string, url: string, aiFeedback?: string }) => {
-    if (!activeChallengeId || !currentUser) return;
+    if (!activeChallengeId || !currentUser) return '';
     const photo: Photo = {
       id: `p_${Date.now()}`,
       challengeId: activeChallengeId,
@@ -150,6 +150,11 @@ const App: React.FC = () => {
       aiFeedback: data.aiFeedback
     };
     setPhotos([photo, ...photos]);
+    return photo.id;
+  };
+
+  const handleUpdatePhoto = (photoId: string, updates: Partial<Photo>) => {
+    setPhotos(photos.map(p => p.id === photoId ? { ...p, ...updates } : p));
   };
 
   const handleRate = (photoId: string, value: number) => {
@@ -278,6 +283,7 @@ const App: React.FC = () => {
                 challenge={c} 
                 phase={getPhase(c)} 
                 photoCount={photos.filter(p => p.challengeId === c.id).length}
+                latestPhotos={photos.filter(p => p.challengeId === c.id).slice(0,3).map(p => p.url)}
                 onClick={() => setActiveChallengeId(c.id)}
               />
             ))}
@@ -393,6 +399,7 @@ const App: React.FC = () => {
         isOpen={isUploadModalOpen} 
         onClose={() => setIsUploadModalOpen(false)} 
         onUpload={handleUpload} 
+        onUpdatePhoto={handleUpdatePhoto}
         canUpload={canUpload}
         maxPhotos={currentMaxPhotos}
       />

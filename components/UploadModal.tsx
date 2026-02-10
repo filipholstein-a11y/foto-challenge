@@ -2,51 +2,72 @@
 import React, { useState } from 'react';
 import { X, Upload, Image as ImageIcon, Sparkles, Loader2, Info } from 'lucide-react';
 import { getPhotoCritique } from '../services/geminiService';
+import { put } from '@vercel/blob';
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (data: { title: string, author: string, url: string, aiFeedback?: string }) => void;
+  // onUpload should return the created photo id so we can update it later
+  onUpload: (data: { title: string, author: string, url: string, aiFeedback?: string }) => string;
+  // allow updating an existing photo (used to save AI feedback after upload)
+  onUpdatePhoto: (photoId: string, updates: { aiFeedback?: string }) => void;
   canUpload: boolean;
   maxPhotos: number;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, canUpload, maxPhotos }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, onUpdatePhoto, canUpload, maxPhotos }) => {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
-  const [fileData, setFileData] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [withAI, setWithAI] = useState(true);
 
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFileData(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const f = e.target.files?.[0];
+    if (f) {
+      setFile(f);
+      setFilePreview(URL.createObjectURL(f));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canUpload || !fileData || !title || !author) return;
+    if (!canUpload || !file || !title || !author) return;
 
-    let aiFeedback = undefined;
-    if (withAI) {
-      setIsAnalyzing(true);
-      aiFeedback = await getPhotoCritique(fileData, title);
-      setIsAnalyzing(false);
+    // 1) Upload to Vercel Blob
+    let uploadedUrl = '';
+    try {
+      const pathname = `uploads/${Date.now()}-${file.name}`;
+      const blob = await put(pathname, file, { access: 'public', addRandomSuffix: true });
+      uploadedUrl = blob.downloadUrl || (blob as any).url || '';
+    } catch (err) {
+      console.error('Upload to Vercel Blob failed', err);
+      alert('Nepodařilo se nahrát fotografii.');
+      return;
     }
 
-    onUpload({ title, author, url: fileData, aiFeedback });
+    // 2) Persist the photo (URL only) and get the created photo id
+    const createdId = onUpload({ title, author, url: uploadedUrl });
+
+    // 3) Call AI critique using the URL and then update the saved photo with returned feedback
+    if (withAI && createdId) {
+      setIsAnalyzing(true);
+      const aiFeedback = await getPhotoCritique(uploadedUrl, title);
+      setIsAnalyzing(false);
+      try {
+        onUpdatePhoto(createdId, { aiFeedback });
+      } catch (e) {
+        console.error('Failed to update photo with AI feedback', e);
+      }
+    }
     onClose();
     setTitle('');
     setAuthor('');
-    setFileData(null);
+    setFile(null);
+    setFilePreview(null);
   };
 
   return (
@@ -100,11 +121,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
                   accept="image/*"
                   onChange={handleFileChange}
                   className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  required={!fileData}
+                  required={!file}
                 />
-                {fileData ? (
+                {filePreview ? (
                   <div className="relative w-full">
-                    <img src={fileData} alt="Preview" className="w-full h-40 object-cover rounded-xl shadow-md" />
+                    <img src={filePreview} alt="Preview" className="w-full h-40 object-cover rounded-xl shadow-md" />
                     <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
                       <p className="text-white text-xs font-bold bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">Změnit fotografii</p>
                     </div>
@@ -137,7 +158,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
 
             <button 
               type="submit" 
-              disabled={isAnalyzing || !fileData}
+              disabled={isAnalyzing || !file}
               className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20 border border-primary-500"
             >
               {isAnalyzing ? (
