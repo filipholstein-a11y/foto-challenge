@@ -1,23 +1,31 @@
 
 import React, { useState } from 'react';
-import { X, Calendar, Image as ImageIcon, PlusCircle, Layers } from 'lucide-react';
+import { X, Calendar, PlusCircle, Layers } from 'lucide-react';
 
 interface CreateChallengeModalProps {
   onClose: () => void;
   onCreate: (data: { title: string, description: string, thumbnailUrl: string, uploadDays: number, votingDays: number, maxPhotosPerUser: number }) => void;
 }
 
+const DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000";
+
 const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, onCreate }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [uploadDays, setUploadDays] = useState(2);
   const [votingDays, setVotingDays] = useState(3);
   const [maxPhotosPerUser, setMaxPhotosPerUser] = useState(6);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCreate({ title, description, thumbnailUrl, uploadDays, votingDays, maxPhotosPerUser });
+    onCreate({ 
+      title, 
+      description, 
+      thumbnailUrl: DEFAULT_THUMBNAIL, 
+      uploadDays, 
+      votingDays, 
+      maxPhotosPerUser 
+    });
     onClose();
   };
 
@@ -32,6 +40,13 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 mb-2 relative group">
+            <img src={DEFAULT_THUMBNAIL} alt="Výchozí náhled" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-white text-xs font-bold uppercase tracking-widest">Výchozí náhled nastaven</span>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Název výzvy</label>
             <input 
@@ -39,6 +54,7 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
               type="text" 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Např. Architektura města"
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
             />
           </div>
@@ -52,27 +68,6 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">URL ilustračního obrázku (úvodní karta)</label>
-            <div className="flex gap-3">
-              <input 
-                required
-                type="url" 
-                value={thumbnailUrl}
-                onChange={(e) => setThumbnailUrl(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-              />
-              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700 flex-shrink-0">
-                {thumbnailUrl ? (
-                  <img src={thumbnailUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-                ) : (
-                  <ImageIcon size={20} className="text-slate-400" />
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
