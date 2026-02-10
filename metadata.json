@@ -1,0 +1,7 @@
+{
+  "name": "Lumina Lens - Foto Soutěž",
+  "description": "A modern photo competition platform with local uploads, real-time voting, and AI-powered aesthetic feedback.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
