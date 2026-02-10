@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY); 
 
 export async function getPhotoCritique(base64Image: string, title: string) {
   try {
