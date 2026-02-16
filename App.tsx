@@ -311,8 +311,10 @@ const App: React.FC = () => {
                 challenge={c} 
                 phase={getPhase(c)} 
                 photoCount={photos.filter(p => p.challengeId === c.id).length}
-                latestPhotos={photos.filter(p => p.challengeId === c.id).slice(0,3).map(p => p.url)}
-                onClick={() => setActiveChallengeId(c.id)}
+                onUpload={() => {
+                  setActiveChallengeId(c.id);
+                  setIsUploadModalOpen(true);
+                }}
               />
             ))}
           </div>

@@ -1,28 +1,23 @@
 
-import React, { useState } from 'react';
-import { Calendar, Users, ArrowRight, Timer, Lock, Star } from 'lucide-react';
+import React from 'react';
+import { Upload, Timer, Lock, Star, Calendar } from 'lucide-react';
 import { Challenge, ChallengePhase } from '../types';
+import Countdown from './Countdown';
 
 interface ChallengeCardProps {
   challenge: Challenge;
   phase: ChallengePhase;
   photoCount: number;
-  onClick: () => void;
-  latestPhotos?: string[];
+  onUpload: () => void;
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000";
 
-const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onClick, latestPhotos = [] }) => {
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
-  
-  const handleImageError = (index: number) => {
-    setImageErrors(prev => new Set(prev).add(`photo-${index}`));
-  };
-
+const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onUpload }) => {
   const getThumbnailUrl = () => {
     return challenge.thumbnailUrl && challenge.thumbnailUrl.trim() ? challenge.thumbnailUrl : FALLBACK_IMAGE;
   };
+
   const getStatusConfig = () => {
     switch (phase) {
       case 'upload':
@@ -37,40 +32,20 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
   };
 
   const status = getStatusConfig();
+  const isUploadPhase = phase === 'upload';
 
   return (
-    <div 
-      onClick={onClick}
-      className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-slate-200 dark:border-slate-800 flex flex-col h-full"
-    >
+    <div className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-200 dark:border-slate-800 flex flex-col h-full">
+      {/* Fallback obrázek */}
       <div className="relative aspect-[16/10] overflow-hidden">
-        {Array.isArray(latestPhotos) && latestPhotos.length > 0 ? (
-          <div className="w-full h-full grid grid-cols-3 gap-0">
-            {latestPhotos.slice(0, 3).map((u, i) => {
-              if (!u || typeof u !== 'string') return null;
-              const hasError = imageErrors.has(`photo-${i}`);
-              const src = hasError ? FALLBACK_IMAGE : u;
-              return (
-                <img 
-                  key={i} 
-                  src={src} 
-                  alt={`${challenge.title}-${i}`}
-                  onError={() => handleImageError(i)}
-                  className={`w-full h-full object-cover ${i===0? 'col-span-2 row-span-2': ''}`} 
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <img 
-            src={getThumbnailUrl()} 
-            alt={challenge.title}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
-            }}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-        )}
+        <img 
+          src={getThumbnailUrl()} 
+          alt={challenge.title}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+          }}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
         
         <div className="absolute top-4 left-4">
@@ -87,27 +62,46 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
         </div>
       </div>
 
+      {/* Obsah */}
       <div className="p-6 flex flex-col flex-1">
         <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-6">
           {challenge.description}
         </p>
 
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-4">
+        {/* Countdown v upload fázi */}
+        {isUploadPhase && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800">
+            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Čas na nahrání</p>
+            <Countdown deadline={challenge.uploadDeadline} />
+          </div>
+        )}
+
+        {/* Tlačítko pro upload */}
+        {isUploadPhase && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpload();
+            }}
+            className="mb-6 w-full bg-primary-600 hover:bg-primary-700 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary-600/20 border border-primary-500"
+          >
+            <Upload size={18} /> Nahrát fotografii
+          </button>
+        )}
+
+        {/* Info dolů */}
+        <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Příspěvků</span>
               <span className="text-sm font-black text-slate-700 dark:text-slate-200">{photoCount}</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Konec</span>
+            <div className="flex flex-col text-right">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Konec hlasování</span>
               <span className="text-sm font-black text-slate-700 dark:text-slate-200">
                 {new Date(challenge.votingDeadline).toLocaleDateString()}
               </span>
             </div>
-          </div>
-          
-          <div className="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-2xl group-hover:bg-primary-600 group-hover:text-white transition-all">
-            <ArrowRight size={20} />
           </div>
         </div>
       </div>
