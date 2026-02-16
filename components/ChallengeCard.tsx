@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, Users, ArrowRight, Timer, Lock, Star } from 'lucide-react';
 import { Challenge, ChallengePhase } from '../types';
 
@@ -11,7 +11,18 @@ interface ChallengeCardProps {
   latestPhotos?: string[];
 }
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000";
+
 const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onClick }) => {
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  
+  const handleImageError = (index: number) => {
+    setImageErrors(prev => new Set(prev).add(`photo-${index}`));
+  };
+
+  const getThumbnailUrl = () => {
+    return challenge.thumbnailUrl && challenge.thumbnailUrl.trim() ? challenge.thumbnailUrl : FALLBACK_IMAGE;
+  };
   const getStatusConfig = () => {
     switch (phase) {
       case 'upload':
@@ -35,14 +46,27 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
       <div className="relative aspect-[16/10] overflow-hidden">
         {latestPhotos && latestPhotos.length > 0 ? (
           <div className="w-full h-full grid grid-cols-3 gap-0">
-            {latestPhotos.slice(0,3).map((u, i) => (
-              <img key={i} src={u} alt={`${challenge.title}-${i}`} className={`w-full h-full object-cover ${i===0? 'col-span-2 row-span-2': ''}`} />
-            ))}
+            {latestPhotos.slice(0,3).map((u, i) => {
+              const hasError = imageErrors.has(`photo-${i}`);
+              const src = hasError ? FALLBACK_IMAGE : u;
+              return (
+                <img 
+                  key={i} 
+                  src={src} 
+                  alt={`${challenge.title}-${i}`}
+                  onError={() => handleImageError(i)}
+                  className={`w-full h-full object-cover ${i===0? 'col-span-2 row-span-2': ''}`} 
+                />
+              );
+            })}
           </div>
         ) : (
           <img 
-            src={challenge.thumbnailUrl} 
+            src={getThumbnailUrl()} 
             alt={challenge.title}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
+            }}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         )}

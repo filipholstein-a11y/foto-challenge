@@ -137,44 +137,72 @@ const App: React.FC = () => {
   const activePhase = useMemo(() => activeChallenge ? getPhase(activeChallenge) : 'results', [activeChallenge, getPhase]);
 
   const handleUpload = (data: { title: string, author: string, url: string, aiFeedback?: string }) => {
-    if (!activeChallengeId || !currentUser) return '';
-    const photo: Photo = {
-      id: `p_${Date.now()}`,
-      challengeId: activeChallengeId,
-      userId: currentUser.id,
-      url: data.url,
-      title: data.title,
-      author: currentUser.username,
-      ratings: [],
-      createdAt: Date.now(),
-      aiFeedback: data.aiFeedback
-    };
-    setPhotos([photo, ...photos]);
-    return photo.id;
+    try {
+      if (!activeChallengeId || !currentUser) return '';
+      const photo: Photo = {
+        id: `p_${Date.now()}`,
+        challengeId: activeChallengeId,
+        userId: currentUser.id,
+        url: data.url && data.url.trim() ? data.url : '',
+        title: data.title,
+        author: currentUser.username,
+        ratings: [],
+        createdAt: Date.now(),
+        aiFeedback: data.aiFeedback
+      };
+      const updatedPhotos = [photo, ...photos];
+      setPhotos(updatedPhotos);
+      safeSave('photo_contest_photos', updatedPhotos);
+      return photo.id;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Chyba při nahrávání fotografie. Zkus to prosím znovu.');
+      return '';
+    }
   };
 
   const handleUpdatePhoto = (photoId: string, updates: Partial<Photo>) => {
-    setPhotos(photos.map(p => p.id === photoId ? { ...p, ...updates } : p));
+    try {
+      const updatedPhotos = photos.map(p => p.id === photoId ? { ...p, ...updates } : p);
+      setPhotos(updatedPhotos);
+      safeSave('photo_contest_photos', updatedPhotos);
+    } catch (error) {
+      console.error('Error updating photo:', error);
+      alert('Chyba při aktualizaci fotografie.');
+    }
   };
 
   const handleRate = (photoId: string, value: number) => {
-    if (votedPhotoIds.includes(photoId) || activePhase !== 'voting') return;
-    setPhotos(photos.map(p => p.id === photoId ? { ...p, ratings: [...p.ratings, value] } : p));
-    setVotedPhotoIds([...votedPhotoIds, photoId]);
+    try {
+      if (votedPhotoIds.includes(photoId) || activePhase !== 'voting') return;
+      const updatedPhotos = photos.map(p => p.id === photoId ? { ...p, ratings: [...p.ratings, value] } : p);
+      setPhotos(updatedPhotos);
+      safeSave('photo_contest_photos', updatedPhotos);
+      setVotedPhotoIds([...votedPhotoIds, photoId]);
+    } catch (error) {
+      console.error('Error rating photo:', error);
+      alert('Chyba při hlasování. Zkus to prosím znovu.');
+    }
   };
 
   const handleCreateChallenge = (data: { title: string, description: string, thumbnailUrl: string, uploadDays: number, votingDays: number, maxPhotosPerUser: number }) => {
-    const newChallenge: Challenge = {
-      id: `c_${Date.now()}`,
-      title: data.title,
-      description: data.description,
-      thumbnailUrl: data.thumbnailUrl,
-      uploadDeadline: Date.now() + (data.uploadDays * 86400000),
-      votingDeadline: Date.now() + ((data.uploadDays + data.votingDays) * 86400000),
-      creatorId: currentUser?.id || 'admin',
-      maxPhotosPerUser: data.maxPhotosPerUser
-    };
-    setChallenges([newChallenge, ...challenges]);
+    try {
+      const newChallenge: Challenge = {
+        id: `c_${Date.now()}`,
+        title: data.title,
+        description: data.description,
+        thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() ? data.thumbnailUrl : "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000",
+        uploadDeadline: Date.now() + (data.uploadDays * 86400000),
+        votingDeadline: Date.now() + ((data.uploadDays + data.votingDays) * 86400000),
+        creatorId: currentUser?.id || 'admin',
+        maxPhotosPerUser: data.maxPhotosPerUser
+      };
+      setChallenges([newChallenge, ...challenges]);
+      safeSave('photo_contest_challenges', [newChallenge, ...challenges]);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      alert('Chyba při vytváření výzvy. Zkus to prosím znovu.');
+    }
   };
 
   const filteredPhotos = useMemo(() => {

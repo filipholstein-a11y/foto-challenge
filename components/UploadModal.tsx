@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Upload, Image as ImageIcon, Sparkles, Loader2, Info } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Sparkles, Loader2, Info, AlertCircle } from 'lucide-react';
 import { getPhotoCritique } from '../services/geminiService';
 
 interface UploadModalProps {
@@ -17,17 +17,27 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
   const [fileData, setFileData] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [withAI, setWithAI] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFileData(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    try {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFileData(reader.result as string);
+          setError(null);
+        };
+        reader.onerror = () => {
+          setError('Chyba při čtení souboru. Zkus to prosím znovu.');
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error('Error handling file:', err);
+      setError('Chyba při zpracování obrázku.');
     }
   };
 
@@ -35,18 +45,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
     e.preventDefault();
     if (!canUpload || !fileData || !title || !author) return;
 
-    let aiFeedback = undefined;
-    if (withAI) {
-      setIsAnalyzing(true);
-      aiFeedback = await getPhotoCritique(fileData, title);
+    try {
+      setError(null);
+      let aiFeedback = undefined;
+      if (withAI) {
+        setIsAnalyzing(true);
+        aiFeedback = await getPhotoCritique(fileData, title);
+        setIsAnalyzing(false);
+      }
+
+      onUpload({ title, author, url: fileData, aiFeedback });
+      onClose();
+      setTitle('');
+      setAuthor('');
+      setFileData(null);
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      setError('Chyba při nahrávání fotografie. Zkus to prosím znovu.');
       setIsAnalyzing(false);
     }
-
-    onUpload({ title, author, url: fileData, aiFeedback });
-    onClose();
-    setTitle('');
-    setAuthor('');
-    setFileData(null);
   };
 
   return (
@@ -70,6 +87,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
+                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Název fotky</label>
