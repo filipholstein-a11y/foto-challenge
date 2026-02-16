@@ -13,7 +13,7 @@ interface ChallengeCardProps {
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000";
 
-const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onClick }) => {
+const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onClick, latestPhotos = [] }) => {
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   
   const handleImageError = (index: number) => {
@@ -44,9 +44,10 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
       className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-slate-200 dark:border-slate-800 flex flex-col h-full"
     >
       <div className="relative aspect-[16/10] overflow-hidden">
-        {latestPhotos && latestPhotos.length > 0 ? (
+        {Array.isArray(latestPhotos) && latestPhotos.length > 0 ? (
           <div className="w-full h-full grid grid-cols-3 gap-0">
-            {latestPhotos.slice(0,3).map((u, i) => {
+            {latestPhotos.slice(0, 3).map((u, i) => {
+              if (!u || typeof u !== 'string') return null;
               const hasError = imageErrors.has(`photo-${i}`);
               const src = hasError ? FALLBACK_IMAGE : u;
               return (
