@@ -68,3 +68,5 @@ export async function getPhotoCritique(imageInput: string, title: string) {
   } catch (error) {
     console.error("Unexpected error in getPhotoCritique:", error);
     return "Chyba při analýze fotografie.";
+  }
+}

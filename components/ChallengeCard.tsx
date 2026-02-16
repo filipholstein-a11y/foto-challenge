@@ -72,7 +72,7 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
         {isUploadPhase && (
           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800">
             <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Čas na nahrání</p>
-            <Countdown deadline={challenge.uploadDeadline} />
+            <Countdown deadline={challenge.uploadDeadline} label="Zbývá" />
           </div>
         )}
 
