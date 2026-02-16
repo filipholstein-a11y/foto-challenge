@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { X, Calendar, PlusCircle, Layers } from 'lucide-react';
+import { X, Calendar, PlusCircle, Layers, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { uploadImageToBlob } from '../services/vercelStorage';
 
 interface CreateChallengeModalProps {
   onClose: () => void;
@@ -15,18 +16,72 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
   const [uploadDays, setUploadDays] = useState(2);
   const [votingDays, setVotingDays] = useState(3);
   const [maxPhotosPerUser, setMaxPhotosPerUser] = useState(6);
+  const [thumbnailData, setThumbnailData] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>(DEFAULT_THUMBNAIL);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          setThumbnailData(dataUrl);
+          setPreviewUrl(dataUrl);
+          setError(null);
+        };
+        reader.onerror = () => {
+          setError('Chyba při čtení souboru obrázku');
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error('Error handling thumbnail:', err);
+      setError('Chyba při zpracování obrázku');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onCreate({ 
-      title, 
-      description, 
-      thumbnailUrl: DEFAULT_THUMBNAIL, 
-      uploadDays, 
-      votingDays, 
-      maxPhotosPerUser 
-    });
-    onClose();
+    
+    try {
+      setIsUploading(true);
+      setError(null);
+      
+      let finalThumbnailUrl = DEFAULT_THUMBNAIL;
+
+      // Pokud byl nahrán vlastní obrázek, ulož ho do Blob
+      if (thumbnailData) {
+        const fileName = `challenge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
+        const uploadedUrl = await uploadImageToBlob(thumbnailData, fileName);
+        
+        if (!uploadedUrl) {
+          setError('Nepodařilo se nahrát obrázek do cloudu');
+          setIsUploading(false);
+          return;
+        }
+        
+        finalThumbnailUrl = uploadedUrl;
+      }
+
+      onCreate({ 
+        title, 
+        description, 
+        thumbnailUrl: finalThumbnailUrl, 
+        uploadDays, 
+        votingDays, 
+        maxPhotosPerUser 
+      });
+      
+      onClose();
+    } catch (err) {
+      console.error('Error creating challenge:', err);
+      setError('Chyba při vytváření výzvy');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -39,11 +94,29 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 mb-2 relative group">
-            <img src={DEFAULT_THUMBNAIL} alt="Výchozí náhled" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-white text-xs font-bold uppercase tracking-widest">Výchozí náhled nastaven</span>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
+              <AlertCircle size={20} />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
+
+          {/* Náhled obrázku */}
+          <div className="relative group">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Obrázek výzvy</label>
+            <div className="aspect-video w-full rounded-2xl overflow-hidden border-2 border-dashed border-slate-200 dark:border-slate-700 mb-2 relative cursor-pointer hover:border-primary-500 transition-colors">
+              <img src={previewUrl} alt="Náhled" className="w-full h-full object-cover" />
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity flex-col gap-2">
+                <Upload size={24} className="text-white" />
+                <span className="text-white text-xs font-bold uppercase tracking-widest">Klikni pro nahrání</span>
+              </div>
             </div>
           </div>
 
@@ -108,9 +181,20 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
             />
           </div>
 
-          <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary-600/20 flex items-center justify-center gap-2">
-            <PlusCircle size={20} /> Vytvořit výzvu
-          </button>
+          <button 
+            type="submit" 
+            disabled={isUploading}
+            className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-primary-600/20 flex items-center justify-center gap-2"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" /> Nahrávám...
+              </>
+            ) : (
+              <>
+                <PlusCircle size={20} /> Vytvořit výzvu
+              </>
+            )}
         </form>
       </div>
     </div>

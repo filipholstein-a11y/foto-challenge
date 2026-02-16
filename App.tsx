@@ -10,6 +10,9 @@ import AdminPanel from './components/AdminPanel';
 import Footer from './components/Footer';
 import Countdown from './components/Countdown';
 import ChallengeCard from './components/ChallengeCard';
+import { saveChallenges, savePhotos, saveUsers, saveVotes, loadChallenges, loadPhotos, loadUsers, loadVotes } from './services/vercelStorage';
+import Countdown from './components/Countdown';
+import ChallengeCard from './components/ChallengeCard';
 
 const App: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -31,54 +34,100 @@ const App: React.FC = () => {
   
   // Track votes locally in localStorage + state
   const [votedPhotoIds, setVotedPhotoIds] = useState<string[]>([]);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(true);
 
-  // Safe localStorage helper
-  const safeSave = useCallback((key: string, value: any) => {
+  // Safe storage helper - hybridní přístup (localStorage + cloud v production)
+  const safeSave = useCallback(async (key: string, value: any) => {
     try {
+      // Lokání cache v localStorage pro development
       localStorage.setItem(key, JSON.stringify(value));
+      
+      // Synchronizace do Vercel KV v production
+      if (import.meta.env.PROD) {
+        const saveFn = key === 'photo_contest_photos' 
+          ? savePhotos 
+          : key === 'photo_contest_challenges' 
+          ? saveChallenges 
+          : key === 'photo_contest_users' 
+          ? saveUsers 
+          : saveVotes;
+        
+        if (saveFn) {
+          await saveFn(value);
+        }
+      }
     } catch (e) {
       if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
         console.error('LocalStorage quota exceeded!');
         setShowQuotaError(true);
       }
+      console.error('Error saving to storage:', e);
     }
   }, []);
 
-  // Persistent storage init
+  // Persistent storage init - načtení z cloud v production, z localStorage v dev
   useEffect(() => {
-    const savedPhotos = localStorage.getItem('photo_contest_photos');
-    const savedChallenges = localStorage.getItem('photo_contest_challenges');
-    const savedUsers = localStorage.getItem('photo_contest_users');
-    const savedVotes = localStorage.getItem('photo_contest_votes');
+    const initStorage = async () => {
+      try {
+        let savedPhotos, savedChallenges, savedUsers, savedVotes;
 
-    if (savedPhotos) setPhotos(JSON.parse(savedPhotos));
-    if (savedChallenges) setChallenges(JSON.parse(savedChallenges));
-    else {
-      // Mock initial challenge
-      const initial: Challenge[] = [{
-        id: 'c1',
-        title: '1. Zub času',
-        description: 'Zachytit pomíjivost věcí, stárnutí materiálů nebo stopy historie v každodenním světě.',
-        thumbnailUrl: 'https://images.unsplash.com/photo-1516518151593-90d659e5e780?q=80&w=1200',
-        uploadDeadline: Date.now() + 86400000,
-        votingDeadline: Date.now() + 172800000,
-        creatorId: 'u1',
-        maxPhotosPerUser: 6
-      }];
-      setChallenges(initial);
-    }
+        if (import.meta.env.PROD) {
+          // Produkce - načtení z Vercel KV
+          savedPhotos = (await loadPhotos()) || [];
+          savedChallenges = (await loadChallenges()) || [];
+          savedUsers = (await loadUsers()) || [];
+          savedVotes = (await loadVotes()) || [];
+        } else {
+          // Development - načtení z localStorage
+          savedPhotos = localStorage.getItem('photo_contest_photos');
+          savedChallenges = localStorage.getItem('photo_contest_challenges');
+          savedUsers = localStorage.getItem('photo_contest_users');
+          savedVotes = localStorage.getItem('photo_contest_votes');
+        }
 
-    if (savedUsers) setUsers(JSON.parse(savedUsers));
-    else {
-      const initialUsers: User[] = [
-        { id: 'u1', username: 'Filip_Admin', role: 'ADMIN', isApproved: true },
-        { id: 'u2', username: 'Guest_User', role: 'GUEST', isApproved: true }
-      ];
-      setUsers(initialUsers);
-      setCurrentUser(initialUsers[1]); // Default to guest
-    }
+        if (import.meta.env.PROD ? savedPhotos?.length : savedPhotos) {
+          setPhotos(import.meta.env.PROD ? savedPhotos : JSON.parse(savedPhotos as string));
+        }
 
-    if (savedVotes) setVotedPhotoIds(JSON.parse(savedVotes));
+        if (import.meta.env.PROD ? savedChallenges?.length : savedChallenges) {
+          setChallenges(import.meta.env.PROD ? savedChallenges : JSON.parse(savedChallenges as string));
+        } else {
+          // Mock initial challenge
+          const initial: Challenge[] = [{
+            id: 'c1',
+            title: '1. Zub času',
+            description: 'Zachytit pomíjivost věcí, stárnutí materiálů nebo stopy historie v každodenním světě.',
+            thumbnailUrl: 'https://images.unsplash.com/photo-1516518151593-90d659e5e780?q=80&w=1200',
+            uploadDeadline: Date.now() + 86400000,
+            votingDeadline: Date.now() + 172800000,
+            creatorId: 'u1',
+            maxPhotosPerUser: 6
+          }];
+          setChallenges(initial);
+        }
+
+        if (import.meta.env.PROD ? savedUsers?.length : savedUsers) {
+          setUsers(import.meta.env.PROD ? savedUsers : JSON.parse(savedUsers as string));
+        } else {
+          const initialUsers: User[] = [
+            { id: 'u1', username: 'Filip_Admin', role: 'ADMIN', isApproved: true },
+            { id: 'u2', username: 'Guest_User', role: 'GUEST', isApproved: true }
+          ];
+          setUsers(initialUsers);
+          setCurrentUser(initialUsers[1]); // Default to guest
+        }
+
+        if (import.meta.env.PROD ? savedVotes?.length : savedVotes) {
+          setVotedPhotoIds(import.meta.env.PROD ? savedVotes : JSON.parse(savedVotes as string));
+        }
+      } catch (error) {
+        console.error('Error initializing storage:', error);
+      } finally {
+        setIsLoadingCloud(false);
+      }
+    };
+
+    initStorage();
   }, []);
 
   useEffect(() => {
