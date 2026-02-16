@@ -195,6 +195,7 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({ onClose, on
                 <PlusCircle size={20} /> Vytvořit výzvu
               </>
             )}
+          </button>
         </form>
       </div>
     </div>

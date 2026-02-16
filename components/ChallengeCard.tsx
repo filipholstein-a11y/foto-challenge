@@ -1,19 +1,19 @@
 
 import React from 'react';
-import { Upload, Timer, Lock, Star, Calendar } from 'lucide-react';
+import { Timer, Lock, Star, Calendar } from 'lucide-react';
 import { Challenge, ChallengePhase } from '../types';
-import Countdown from './Countdown';
 
 interface ChallengeCardProps {
   challenge: Challenge;
   phase: ChallengePhase;
   photoCount: number;
-  onUpload: () => void;
+  onClick: () => void;
+  isPhotographer: boolean;
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1000";
 
-const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onUpload }) => {
+const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCount, onClick, isPhotographer }) => {
   const getThumbnailUrl = () => {
     return challenge.thumbnailUrl && challenge.thumbnailUrl.trim() ? challenge.thumbnailUrl : FALLBACK_IMAGE;
   };
@@ -32,10 +32,12 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
   };
 
   const status = getStatusConfig();
-  const isUploadPhase = phase === 'upload';
 
   return (
-    <div className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-200 dark:border-slate-800 flex flex-col h-full">
+    <div 
+      onClick={onClick}
+      className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-200 dark:border-slate-800 flex flex-col h-full cursor-pointer"
+    >
       {/* Fallback obrázek */}
       <div className="relative aspect-[16/10] overflow-hidden">
         <img 
@@ -62,34 +64,8 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, phase, photoCo
         </div>
       </div>
 
-      {/* Obsah */}
+      {/* Bez popisu na úvodní stránce */}
       <div className="p-6 flex flex-col flex-1">
-        <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 mb-6">
-          {challenge.description}
-        </p>
-
-        {/* Countdown v upload fázi */}
-        {isUploadPhase && (
-          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800">
-            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Čas na nahrání</p>
-            <Countdown deadline={challenge.uploadDeadline} label="Zbývá" />
-          </div>
-        )}
-
-        {/* Tlačítko pro upload */}
-        {isUploadPhase && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpload();
-            }}
-            className="mb-6 w-full bg-primary-600 hover:bg-primary-700 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary-600/20 border border-primary-500"
-          >
-            <Upload size={18} /> Nahrát fotografii
-          </button>
-        )}
-
-        {/* Info dolů */}
         <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">

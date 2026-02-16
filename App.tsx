@@ -10,9 +10,8 @@ import AdminPanel from './components/AdminPanel';
 import Footer from './components/Footer';
 import Countdown from './components/Countdown';
 import ChallengeCard from './components/ChallengeCard';
+import ChallengeDetail from './components/ChallengeDetail';
 import { saveChallenges, savePhotos, saveUsers, saveVotes, loadChallenges, loadPhotos, loadUsers, loadVotes } from './services/vercelStorage';
-import Countdown from './components/Countdown';
-import ChallengeCard from './components/ChallengeCard';
 
 const App: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -360,115 +359,27 @@ const App: React.FC = () => {
                 challenge={c} 
                 phase={getPhase(c)} 
                 photoCount={photos.filter(p => p.challengeId === c.id).length}
-                onUpload={() => {
-                  setActiveChallengeId(c.id);
-                  setIsUploadModalOpen(true);
-                }}
+                onClick={() => setActiveChallengeId(c.id)}
+                isPhotographer={currentUser?.role === 'PHOTOGRAPHER' && currentUser?.isApproved}
               />
             ))}
           </div>
         </main>
       ) : (
-        /* CHALLENGE DETAIL */
-        <div className="animate-in fade-in duration-500">
-          <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-16 mb-12 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-10 opacity-5 -mr-20 -mt-20">
-               <Camera size={400} />
-            </div>
-            
-            <div className="max-w-7xl mx-auto px-4 relative z-10 flex flex-col lg:flex-row justify-between items-start gap-12">
-              <div className="max-w-3xl">
-                <button onClick={() => setActiveChallengeId(null)} className="flex items-center gap-2 text-slate-400 hover:text-primary-500 font-bold text-sm mb-6 transition-colors">
-                  <ChevronLeft size={16} /> Zpět na přehled
-                </button>
-                <h2 className="text-5xl lg:text-6xl font-black tracking-tight mb-4">{activeChallenge?.title}</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-xl leading-relaxed">{activeChallenge?.description}</p>
-                
-                <div className="flex flex-wrap gap-4 mt-10">
-                   <div className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 border ${
-                     activePhase === 'upload' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                     activePhase === 'voting' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                     'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                   }`}>
-                     {activePhase === 'upload' ? <Plus size={14} /> : activePhase === 'voting' ? <Sparkles size={14} /> : <Trophy size={14} />}
-                     {activePhase === 'upload' ? 'Fáze: Nahrávání' : activePhase === 'voting' ? 'Fáze: Hlasování' : 'Fáze: Výsledky'}
-                   </div>
-                   <div className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold flex items-center gap-2 border border-slate-200 dark:border-slate-800">
-                     <Info size={14} /> 
-                     <span>Nahrané fotky: {userPhotoCount} z {currentMaxPhotos} možných</span>
-                   </div>
-                </div>
-              </div>
-
-              <div className="w-full lg:w-auto">
-                 {activePhase === 'upload' && <Countdown deadline={activeChallenge?.uploadDeadline || 0} label="Konec příspěvků" />}
-                 {activePhase === 'voting' && <Countdown deadline={activeChallenge?.votingDeadline || 0} label="Konec hlasování" />}
-                 {activePhase === 'results' && (
-                   <div className="bg-primary-600 p-8 rounded-[40px] text-white shadow-2xl shadow-primary-600/30 flex items-center gap-6 border border-primary-500">
-                      <Trophy size={48} />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Challenge uzavřena</p>
-                        <p className="text-2xl font-black">Máme vítěze!</p>
-                      </div>
-                   </div>
-                 )}
-              </div>
-            </div>
-          </header>
-
-          <main className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-12">
-            <div className="lg:col-span-8 space-y-12">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-                <div className="relative flex-1 w-full max-w-sm">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="text" 
-                    placeholder="Hledat autora nebo název..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex shadow-sm">
-                    <button onClick={() => setSortBy('newest')} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${sortBy === 'newest' ? 'bg-primary-600 text-white shadow-md' : 'text-slate-500 hover:text-primary-500'}`}>NOVÉ</button>
-                    <button onClick={() => setSortBy('rating')} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${sortBy === 'rating' ? 'bg-primary-600 text-white shadow-md' : 'text-slate-500 hover:text-primary-500'}`}>TOP</button>
-                  </div>
-                  {canUpload && (
-                    <button onClick={() => setIsUploadModalOpen(true)} className="bg-primary-600 hover:bg-primary-700 text-white font-black px-6 py-4 rounded-2xl shadow-xl shadow-primary-600/20 flex items-center gap-2 border border-primary-500">
-                      <Plus size={20} /> Nahrát
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {filteredPhotos.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {filteredPhotos.map(photo => (
-                    <PhotoCard 
-                      key={photo.id} 
-                      photo={photo} 
-                      phase={activePhase} 
-                      hasVoted={votedPhotoIds.includes(photo.id)}
-                      onRate={handleRate}
-                      onShowCritique={setSelectedCritique}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-slate-900 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-slate-800">
-                  <AlertCircle size={64} className="text-slate-200 dark:text-slate-800 mb-4" />
-                  <p className="text-slate-400 font-bold">Zatím žádné fotografie k zobrazení.</p>
-                </div>
-              )}
-            </div>
-
-            <aside className="lg:col-span-4 space-y-12">
-              <Leaderboard photos={photos.filter(p => p.challengeId === activeChallengeId)} />
-            </aside>
-          </main>
-        </div>
+        /* CHALLENGE DETAIL PAGE */
+        <ChallengeDetail
+          challenge={activeChallenge!}
+          phase={activePhase}
+          currentTime={currentTime}
+          photos={photos}
+          maxPhotosPerUser={activeChallenge?.maxPhotosPerUser || 6}
+          currentUserId={currentUser?.id || ''}
+          isPhotographer={currentUser?.role === 'PHOTOGRAPHER' && currentUser?.isApproved}
+          onBack={() => setActiveChallengeId(null)}
+          onUpload={() => setIsUploadModalOpen(true)}
+          onRatePhoto={handleRate}
+          votedPhotoIds={votedPhotoIds}
+        />
       )}
 
       <Footer />
