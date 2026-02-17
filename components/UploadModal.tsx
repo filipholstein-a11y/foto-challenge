@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Image as ImageIcon, Sparkles, Loader2, Info, AlertCircle } from 'lucide-react';
 import { getPhotoCritique } from '../services/geminiService';
+import { uploadImageToBlob } from '../services/vercelStorage';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
   const [author, setAuthor] = useState('');
   const [fileData, setFileData] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [withAI, setWithAI] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +49,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
 
     try {
       setError(null);
+      setIsUploading(true);
+
+      // Nahrát obrázek do Vercel Blob a získat URL
+      const fileName = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
+      const blobUrl = await uploadImageToBlob(fileData, fileName);
+
+      if (!blobUrl) {
+        setError('Nepodařilo se nahrát fotografii. Zkus to prosím znovu.');
+        setIsUploading(false);
+        return;
+      }
+
+      // Pokud chce AI kritiku, analyzuj fotografii
       let aiFeedback = undefined;
       if (withAI) {
         setIsAnalyzing(true);
@@ -54,7 +69,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
         setIsAnalyzing(false);
       }
 
-      onUpload({ title, author, url: fileData, aiFeedback });
+      // Pošli jen URL (ne Base64) do onUpload
+      onUpload({ title, author, url: blobUrl, aiFeedback });
       onClose();
       setTitle('');
       setAuthor('');
@@ -63,6 +79,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
       console.error('Error uploading photo:', err);
       setError('Chyba při nahrávání fotografie. Zkus to prosím znovu.');
       setIsAnalyzing(false);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -161,13 +179,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
 
             <button 
               type="submit" 
-              disabled={isAnalyzing || !fileData}
+              disabled={isAnalyzing || isUploading || !fileData}
               className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20 border border-primary-500"
             >
               {isAnalyzing ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
                   Analyzuji fotografii...
+                </>
+              ) : isUploading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Nahrávám fotografii...
                 </>
               ) : (
                 'Zveřejnit do soutěže'

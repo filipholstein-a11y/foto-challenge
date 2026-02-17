@@ -35,13 +35,10 @@ const App: React.FC = () => {
   const [votedPhotoIds, setVotedPhotoIds] = useState<string[]>([]);
   const [isLoadingCloud, setIsLoadingCloud] = useState(true);
 
-  // Safe storage helper - hybridní přístup (localStorage + cloud v production)
+  // Safe storage helper - synchronizace do Vercel KV (s localStorage fallback)
   const safeSave = useCallback(async (key: string, value: any) => {
     try {
-      // Lokání cache v localStorage pro development
-      localStorage.setItem(key, JSON.stringify(value));
-      
-      // Synchronizace do Vercel KV v production
+      // Primární úložiště: Vercel KV v production
       if (import.meta.env.PROD) {
         const saveFn = key === 'photo_contest_photos' 
           ? savePhotos 
@@ -55,9 +52,33 @@ const App: React.FC = () => {
           await saveFn(value);
         }
       }
+      
+      // Sekundární cache: localStorage pro offline přístup (POUZE bez obrázků v Base64)
+      // Filtrujeme fotos aby se nesynchronizovaly jako Base64 - jen metadata a URL adresy
+      if (key === 'photo_contest_photos' && Array.isArray(value)) {
+        // Uložit jen metadata bez Base64 dat
+        const cleanedPhotos = value.map(photo => {
+          const cleaned = { ...photo };
+          // Zajistit, že URL je pouze string, ne Base64 data
+          if (cleaned.url && cleaned.url.startsWith('http')) {
+            // Už je to URL z Blob, je to OK
+            return cleaned;
+          } else if (cleaned.url && cleaned.url.startsWith('data:')) {
+            // Je to Base64, vymazat! Nemělo by se to stát
+            console.warn('WARNING: Photo with Base64 data detected, stripping it!', cleaned.id);
+            cleaned.url = '';
+            return cleaned;
+          }
+          return cleaned;
+        });
+        localStorage.setItem(key, JSON.stringify(cleanedPhotos));
+      } else {
+        // Ostatní data se normálně cachují
+        localStorage.setItem(key, JSON.stringify(value));
+      }
     } catch (e) {
       if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-        console.error('LocalStorage quota exceeded!');
+        console.error('LocalStorage quota exceeded! Data will be lost on page reload.', e);
         setShowQuotaError(true);
       }
       console.error('Error saving to storage:', e);
@@ -85,11 +106,29 @@ const App: React.FC = () => {
         }
 
         if (import.meta.env.PROD ? savedPhotos?.length : savedPhotos) {
-          setPhotos(import.meta.env.PROD ? savedPhotos : JSON.parse(savedPhotos as string));
+          let photos = import.meta.env.PROD ? savedPhotos : JSON.parse(savedPhotos as string);
+          // Filtrovat fotky s Base64 daty (aby se nevyskytovaly v storage)
+          photos = photos.filter((p: Photo) => {
+            if (p.url && p.url.startsWith('data:')) {
+              console.warn('Skipping photo with Base64 data:', p.id);
+              return false;
+            }
+            return true;
+          });
+          setPhotos(photos);
         }
 
         if (import.meta.env.PROD ? savedChallenges?.length : savedChallenges) {
-          setChallenges(import.meta.env.PROD ? savedChallenges : JSON.parse(savedChallenges as string));
+          let challenges = import.meta.env.PROD ? savedChallenges : JSON.parse(savedChallenges as string);
+          // Zajistit, aby challenges neobsahoval Base64 data v thumbnailUrl
+          challenges = challenges.filter((c: Challenge) => {
+            if (c.thumbnailUrl && c.thumbnailUrl.startsWith('data:')) {
+              console.warn('Removing challenge with Base64 thumbnail:', c.id);
+              return false;
+            }
+            return true;
+          });
+          setChallenges(challenges);
         } else {
           // Mock initial challenge
           const initial: Challenge[] = [{

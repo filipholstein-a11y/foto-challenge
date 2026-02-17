@@ -1,6 +1,7 @@
-import { put } from '@vercel/blob';
+// Frontend service - volání API routes pro cloud operace
+// Nepoužíváme přímo @vercel/blob nebo @vercel/kv - ty jsou server-side jen
 
-const API_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
+const API_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
 /**
  * Připravovací funkce pro volání KV API
