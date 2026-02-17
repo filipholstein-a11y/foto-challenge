@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Fallback pro development - ukládat obrázky jako SimpleDB či mock
-const mockBlobStorage = new Map<string, string>();
+// Development fallback storage - používáme Map který se vyprázdní po restartu serveru
+const mockBlobStorage = new Map<string, { data: string; timestamp: number }>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -15,6 +15,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (req.method === 'GET') {
+    // Retrieve blob data by fileKey
+    const { key } = req.query;
+    if (key && typeof key === 'string') {
+      const blob = mockBlobStorage.get(key);
+      if (blob) {
+        const base64Data = blob.data;
+        const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        return res.status(200).end(buffer);
+      }
+    }
+    return res.status(404).json({ error: 'Blob not found' });
   }
 
   if (req.method !== 'POST') {
@@ -63,14 +79,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Development fallback: Uložit jako mock data URL
-    console.warn('Using development blob storage fallback - data will NOT persist across restarts');
+    // Development fallback: uložit Base64 na serveru a vrátit referenční URL
+    console.warn('Using development blob storage fallback - data stored in memory');
     
     if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-      mockBlobStorage.set(fileName, imageData);
-      // Vrátit mock URL (v development to bude data URL)
-      const mockUrl = `blob-storage://${fileName}`;
-      return res.status(200).json({ success: true, url: imageData }); // Vrátit přímo data URL, aby test fungoval
+      // Vytvořit jedinečný klíč pro obrázek
+      const fileKey = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Uložit Base64 data do memory mapy
+      mockBlobStorage.set(fileKey, {
+        data: imageData,
+        timestamp: Date.now()
+      });
+
+      // Vyčistit staré záznamy (starší než 24 hodin) pro neplýtvání pamětí
+      if (mockBlobStorage.size > 100) {
+        const now = Date.now();
+        const toDelete = [];
+        for (const [key, value] of mockBlobStorage.entries()) {
+          if (now - value.timestamp > 86400000) { // 24 hodin
+            toDelete.push(key);
+          }
+        }
+        toDelete.forEach(key => mockBlobStorage.delete(key));
+      }
+
+      // Vrátit URL která odkazuje na lokální blob endpoint
+      const mockUrl = `http://localhost:3001/api/blob?key=${fileKey}`;
+      return res.status(200).json({ success: true, url: mockUrl });
     } else {
       return res.status(400).json({ error: 'Invalid image data format' });
     }

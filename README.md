@@ -17,4 +17,24 @@ View your app in AI Studio: https://ai.studio/apps/drive/13iCk320IJ5H-UTtBHePSLP
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
-   `npm run dev`
+   `npm run dev`   
+   This starts:
+   - **Dev API Server** (port 3001) - handles `/api/blob` image uploads and `/api/kv` storage
+   - **Vite Dev Server** (port 3002) - React app
+   
+   Open: http://localhost:3002
+
+## Development
+
+- **Frontend only:** `npm run dev:vite` (port 3002)
+- **API only:** `npm run dev:api` (port 3001)
+- **Both (recommended):** `npm run dev`
+
+## Features
+
+- 📸 Photo challenges with upload/voting system
+- ☁️ Image storage with Vercel Blob
+- 🗄️ Redis KV for metadata persistence  
+- 🤖 AI photo critique with Gemini API
+- ⭐ 5-star rating system
+- 👥 Multi-user photo voting

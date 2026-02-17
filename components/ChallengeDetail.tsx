@@ -137,8 +137,8 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
             )}
           </div>
 
-          {/* Grid fotografií - 2 sloupce */}
-          <div className="grid grid-cols-2 gap-6">
+          {/* Grid fotografií - 3-4 sloupce, menší dlaždice */}
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
             {gridItems.map((item) => {
               if (item.type === 'photo' && item.photo) {
                 // Existující fotka
@@ -149,7 +149,7 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
                 return (
                   <div
                     key={item.photo.id}
-                    className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all"
+                    className="bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all"
                   >
                     {/* Obrázek */}
                     <div className={`relative aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800 ${isBlurred ? 'blur-lg' : ''}`}>
@@ -160,7 +160,7 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
                       />
                       {isUploadPhase && !isOwnPhoto && (
                         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                          <span className="text-white text-xs font-bold bg-black/60 px-3 py-1 rounded-full">
+                          <span className="text-white text-[9px] font-bold bg-black/60 px-2 py-0.5 rounded-full">
                             Nahrána
                           </span>
                         </div>
@@ -168,16 +168,16 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
                     </div>
 
                     {/* Info */}
-                    <div className="p-4">
-                      <h3 className="font-black text-sm mb-1 truncate">{item.photo.title}</h3>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
+                    <div className="p-2">
+                      <h3 className="font-black text-xs mb-0.5 truncate">{item.photo.title}</h3>
+                      <p className="text-[9px] text-slate-500 dark:text-slate-400 mb-2 truncate">
                         {item.photo.author}
                       </p>
 
                       {/* Upload phase - jen info bez hodnocení */}
                       {isUploadPhase && (
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <p className="text-[10px] text-slate-400">
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                          <p className="text-[9px] text-slate-400">
                             Hlasů: {item.photo.ratings.length}
                           </p>
                         </div>
@@ -185,8 +185,8 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
 
                       {/* Rating v voting fázi */}
                       {isVotingPhase && !isOwnPhoto && (
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Hodnotit</p>
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-1">Hlasovat</p>
                           <StarRating
                             rating={hasVoted ? 0 : 0}
                             onRate={(value) => {
@@ -197,22 +197,22 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
                             average={item.photo.ratings.length > 0 ? item.photo.ratings.reduce((a, b) => a + b, 0) / item.photo.ratings.length : 0}
                             count={item.photo.ratings.length}
                             disabled={hasVoted}
-                            size={16}
+                            size={12}
                           />
                           {hasVoted && (
-                            <p className="text-[10px] text-primary-600 font-bold mt-2">Hlasováno ✓</p>
+                            <p className="text-[8px] text-primary-600 font-bold mt-1">Hlasováno ✓</p>
                           )}
                         </div>
                       )}
                       {isVotingPhase && isOwnPhoto && (
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tvoje foto - hodnosní:</p>
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tvoje foto:</p>
                           <StarRating
                             average={item.photo.ratings.length > 0 ? item.photo.ratings.reduce((a, b) => a + b, 0) / item.photo.ratings.length : 0}
                             onRate={() => {}}
                             count={item.photo.ratings.length}
                             disabled={true}
-                            size={16}
+                            size={12}
                           />
                         </div>
                       )}
@@ -224,19 +224,19 @@ const ChallengeDetail: React.FC<ChallengeDetailProps> = ({
                 return (
                   <div
                     key={`slot-${item.index}`}
-                    className="bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 aspect-square flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                    className="bg-slate-50 dark:bg-slate-800 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 aspect-square flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
                     onClick={() => {
                       if (canUpload) onUpload();
                     }}
                   >
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col items-center gap-1">
                       <Plus
-                        size={40}
+                        size={20}
                         className="text-slate-400 group-hover:text-primary-500 transition-colors"
                       />
                       {canUpload && (
-                        <span className="text-xs font-bold text-slate-500 group-hover:text-primary-500">
-                          Klikni pro nahrání
+                        <span className="text-[9px] font-bold text-slate-500 group-hover:text-primary-500 text-center px-1">
+                          Nahrát
                         </span>
                       )}
                     </div>
