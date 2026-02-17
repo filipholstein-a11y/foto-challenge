@@ -46,12 +46,16 @@ async function handler(req, res) {
       });
       req.on('end', () => {
         try {
+          console.log('[BLOB POST] Received request, body size:', body.length);
           const { imageData, fileName } = JSON.parse(body);
 
           if (!imageData || !fileName) {
+            console.error('[BLOB POST] Missing imageData or fileName');
             res.writeHead(400).end(JSON.stringify({ error: 'Missing imageData or fileName' }));
             return;
           }
+
+          console.log('[BLOB POST] Storing image:', fileName, 'size:', imageData.length);
 
           // Uložit Base64 data do memory mapy
           const fileKey = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -74,6 +78,7 @@ async function handler(req, res) {
 
           // Vrátit URL
           const mockUrl = `http://localhost:3001/api/blob?key=${fileKey}`;
+          console.log('[BLOB POST] Returning URL:', mockUrl);
           res.writeHead(200, { 'Content-Type': 'application/json' }).end(
             JSON.stringify({ success: true, url: mockUrl })
           );

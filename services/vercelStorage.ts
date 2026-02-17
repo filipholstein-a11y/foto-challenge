@@ -1,7 +1,7 @@
 // Frontend service - volání API routes pro cloud operace
 // Nepoužíváme přímo @vercel/blob nebo @vercel/kv - ty jsou server-side jen
 
-const API_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
+const API_URL = import.meta.env.PROD ? '' : '';  // Use relative paths (Vite proxy handles routing)
 
 /**
  * Připravovací funkce pro volání KV API
@@ -115,6 +115,8 @@ export async function saveVotes(votes: string[]) {
  */
 export async function uploadImageToBlob(imageData: string, fileName: string): Promise<string | null> {
   try {
+    console.log('[uploadImageToBlob] Starting upload to', API_URL, 'fileName:', fileName, 'imageSize:', imageData.length);
+    
     const response = await fetch(`${API_URL}/api/blob`, {
       method: 'POST',
       headers: {
@@ -123,14 +125,22 @@ export async function uploadImageToBlob(imageData: string, fileName: string): Pr
       body: JSON.stringify({ imageData, fileName }),
     });
 
+    console.log('[uploadImageToBlob] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Blob upload failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('[uploadImageToBlob] Error response:', errorText);
+      throw new Error(`Blob upload failed: ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('[uploadImageToBlob] Success, returned URL:', data.url);
     return data.url || null;
   } catch (error) {
-    console.error('Error uploading image to Blob:', error);
+    console.error('[uploadImageToBlob] Error:', error instanceof Error ? error.message : String(error));
+    if (error instanceof TypeError) {
+      console.error('[uploadImageToBlob] Network or CORS error detected');
+    }
     return null;
   }
 }

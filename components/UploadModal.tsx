@@ -50,12 +50,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
     try {
       setError(null);
       setIsUploading(true);
+      console.log('[UploadModal] handleSubmit started, fileData size:', fileData.length);
 
       // Nahrát obrázek do Vercel Blob a získat URL
       const fileName = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
+      console.log('[UploadModal] Calling uploadImageToBlob with fileName:', fileName);
       const blobUrl = await uploadImageToBlob(fileData, fileName);
+      console.log('[UploadModal] uploadImageToBlob returned:', blobUrl);
 
       if (!blobUrl) {
+        console.error('[UploadModal] blobUrl is null or empty');
         setError('Nepodařilo se nahrát fotografii. Zkus to prosím znovu.');
         setIsUploading(false);
         return;
@@ -70,6 +74,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpload, ca
       }
 
       // Pošli jen URL (ne Base64) do onUpload
+      console.log('[UploadModal] Calling onUpload with URL:', blobUrl);
       onUpload({ title, author, url: blobUrl, aiFeedback });
       onClose();
       setTitle('');
